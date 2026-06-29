@@ -20,7 +20,9 @@ class OddsService {
         },
       );
 
-      if (resp.statusCode != 200) return [];
+      if (resp.statusCode != 200) {
+        throw Exception('HTTP ${resp.statusCode} from ${settings.bwbDomain}. Try different domain.');
+      }
 
       // Remove outer parens and semicolons
       var text = resp.body.trim();
@@ -32,7 +34,12 @@ class OddsService {
       // Convert single quotes to double quotes for JSON parsing
       text = text.replaceAll("'", '"');
 
-      final data = json.decode(text) as List;
+      List data;
+      try {
+        data = json.decode(text) as List;
+      } catch (e) {
+        throw Exception('Parse error from ${settings.bwbDomain}. Response format changed or domain wrong.');
+      }
       final matchesRoot = data[3] as List;
 
       final matches = <OddsMatch>[];

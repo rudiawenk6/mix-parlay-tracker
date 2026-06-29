@@ -16,7 +16,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
   List<ParlayPick> _picks = [];
   bool _loading = false;
   String _aiAnalysis = '';
-  String _error = '';
+  String _status = '';
   int _targetLegs = 10;
 
   @override
@@ -25,10 +25,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
       appBar: AppBar(
         title: const Text('Generate Parlay'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchOdds,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchOdds),
         ],
       ),
       body: ListView(
@@ -42,13 +39,11 @@ class _GenerateScreenState extends State<GenerateScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text('Target Legs:'),
+                      const Text('Legs:'),
                       const SizedBox(width: 8),
                       DropdownButton<int>(
                         value: _targetLegs,
-                        items: [5, 6, 7, 8, 9, 10]
-                            .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
-                            .toList(),
+                        items: [5,6,7,8,9,10].map((n) => DropdownMenuItem(value: n, child: Text('$n'))).toList(),
                         onChanged: (v) => setState(() => _targetLegs = v ?? 10),
                       ),
                       const Spacer(),
@@ -61,10 +56,15 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       ),
                     ],
                   ),
-                  if (_error.isNotEmpty) ...[
+                  if (_status.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(_error, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    Text(_status, style: TextStyle(
+                      fontSize: 12,
+                      color: _status.contains('Error') || _status.contains('No match') ? Colors.red : Colors.grey,
+                    )),
                   ],
+                  const SizedBox(height: 4),
+                  Text('Domain: ${SettingsService.instance.bwbDomain}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 ],
               ),
             ),
@@ -73,12 +73,22 @@ class _GenerateScreenState extends State<GenerateScreen> {
 
           // Available matches
           if (_matches.isNotEmpty) ...[
-            Text('Available: ${_matches.length} matches', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text('${_matches.length} matches found', style: const TextStyle(fontSize: 12, color: Colors.green)),
             const SizedBox(height: 8),
             FilledButton.icon(
               onPressed: _generatePicks,
               icon: const Icon(Icons.auto_fix_high),
               label: Text('Generate $_targetLegs Team Parlay'),
+            ),
+            const SizedBox(height: 8),
+            // Show sample matches
+            ExpansionTile(
+              title: Text('Available Matches (${_matches.length})', style: const TextStyle(fontSize: 13)),
+              children: _matches.take(20).map((m) => ListTile(
+                dense: true,
+                title: Text('${m.home} vs ${m.away}', style: const TextStyle(fontSize: 12)),
+                subtitle: Text('${m.league} | O/U:${m.ouOver}/${m.ouUnder} AH:${m.ahHome}(${m.ahLine})', style: const TextStyle(fontSize: 10)),
+              )).toList(),
             ),
             const SizedBox(height: 16),
           ],
@@ -93,7 +103,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   children: [
                     Text('${_picks.length} LEG PARLAY', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text('Total Odds: ${_totalOdds().toStringAsFixed(1)}x | Payout: ${(_totalOdds() * 55).toStringAsFixed(0)}'),
+                    Text('Total Odds: ${_totalOdds().toStringAsFixed(1)}x | Stake 55 → Payout: ${(_totalOdds() * 55).toStringAsFixed(0)}'),
                   ],
                 ),
               ),
@@ -105,11 +115,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
               final emoji = p.market == 'O/U'
                   ? (p.pick.contains('Over') ? '⬆️' : '⬇️')
                   : p.market == 'AH' ? '🇭🇰' : '1️⃣';
-              final confColor = p.confidence == 'HIGH'
-                  ? Colors.green
-                  : p.confidence == 'MED'
-                      ? Colors.orange
-                      : Colors.grey;
+              final confColor = p.confidence == 'HIGH' ? Colors.green : p.confidence == 'MED' ? Colors.orange : Colors.grey;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 4),
@@ -120,10 +126,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   subtitle: Text('${p.match.league} | $emoji ${p.pick} @ ${p.odds}'),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: confColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                    decoration: BoxDecoration(color: confColor.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
                     child: Text(p.confidence, style: TextStyle(color: confColor, fontSize: 10)),
                   ),
                 ),
@@ -153,16 +156,10 @@ class _GenerateScreenState extends State<GenerateScreen> {
             ),
             const SizedBox(height: 16),
 
-            // AI Analysis result
             if (_aiAnalysis.isNotEmpty) ...[
               const Text('AI ANALYSIS', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(_aiAnalysis, style: const TextStyle(fontSize: 13)),
-                ),
-              ),
+              Card(child: Padding(padding: const EdgeInsets.all(12), child: Text(_aiAnalysis, style: const TextStyle(fontSize: 13)))),
             ],
           ],
 
@@ -174,6 +171,8 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   Icon(Icons.sports_soccer, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
                   Text('Tap "Fetch Odds" to load matches', style: TextStyle(color: Colors.grey)),
+                  SizedBox(height: 8),
+                  Text('Make sure domain is set in Settings', style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
             ),
@@ -184,30 +183,30 @@ class _GenerateScreenState extends State<GenerateScreen> {
   }
 
   double _totalOdds() {
-    double result = 1.0;
-    for (final p in _picks) {
-      result *= p.odds;
-    }
-    return result;
+    double r = 1.0;
+    for (final p in _picks) r *= p.odds;
+    return r;
   }
 
   Future<void> _fetchOdds() async {
-    setState(() {
-      _loading = true;
-      _error = '';
-    });
+    setState(() { _loading = true; _status = 'Fetching from ${SettingsService.instance.bwbDomain}...'; });
 
     try {
       final matches = await OddsService.fetchOdds();
       setState(() {
         _matches = matches;
         _loading = false;
-        if (matches.isEmpty) _error = 'No matches found. Check domain in Settings.';
+        if (matches.isEmpty) {
+          _status = 'No matches found. Try different domain in Settings. '
+              'Common: letsaiabt365.com, bwb365liga.com, bwbet365.com';
+        } else {
+          _status = 'Found ${matches.length} matches. Tap Generate!';
+        }
       });
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = 'Error: $e';
+        _status = 'Error: $e\nCheck domain in Settings and network connection.';
       });
     }
   }
@@ -217,11 +216,18 @@ class _GenerateScreenState extends State<GenerateScreen> {
     setState(() {
       _picks = picks;
       _aiAnalysis = '';
+      if (picks.isEmpty) {
+        _status = 'No safe picks found. Matches may not have valid odds (O/U or AH).';
+      } else if (picks.length < _targetLegs) {
+        _status = 'Only ${picks.length} legs generated (not enough safe picks). Consider different strategy.';
+      } else {
+        _status = '${picks.length} legs generated! Total odds: ${_totalOdds().toStringAsFixed(1)}x';
+      }
     });
   }
 
   Future<void> _sendTelegram() async {
-    final legs = _picks.map((p) => {
+    final legs = _picks.map((p) => <String, dynamic>{
       'match': '${p.match.home} vs ${p.match.away}',
       'league': p.match.league,
       'time': p.match.time,
@@ -231,35 +237,37 @@ class _GenerateScreenState extends State<GenerateScreen> {
     }).toList();
 
     final ok = await TelegramService.sendParlay(legs);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(ok ? 'Sent to Telegram!' : 'Failed. Check token in Settings.'),
-        backgroundColor: ok ? Colors.green : Colors.red,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok ? 'Sent to Telegram!' : 'Failed. Set token in Settings.'),
+          backgroundColor: ok ? Colors.green : Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _analyzeAI() async {
     if (!SettingsService.instance.hasOpenRouterKey) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Set OpenRouter API key in Settings first'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Set OpenRouter key in Settings first'), backgroundColor: Colors.orange),
       );
       return;
     }
 
     setState(() => _aiAnalysis = 'Analyzing...');
 
-    final parlayInfo = StringBuffer();
-    parlayInfo.writeln('Parlay ${_picks.length} team:');
+    final info = StringBuffer();
+    info.writeln('Parlay ${_picks.length} team:');
     for (var i = 0; i < _picks.length; i++) {
       final p = _picks[i];
-      parlayInfo.writeln('#${i + 1} ${p.match.home} vs ${p.match.away} | ${p.match.league} | ${p.pick} @ ${p.odds}');
+      info.writeln('#${i+1} ${p.match.home} vs ${p.match.away} | ${p.match.league} | ${p.pick} @ ${p.odds}');
     }
-    parlayInfo.writeln('Total odds: ${_totalOdds().toStringAsFixed(1)}x');
-    parlayInfo.writeln('Strategy: ${SettingsService.instance.parlayStrategy}');
-    parlayInfo.writeln('\nAnalyze: Which picks are risky? Any improvements?');
+    info.writeln('Total odds: ${_totalOdds().toStringAsFixed(1)}x');
+    info.writeln('Strategy: ${SettingsService.instance.parlayStrategy}');
+    info.writeln('\nAnalyze: Which picks are risky? Any improvements?');
 
-    final analysis = await AiService.analyzeParlay(parlayInfo.toString());
+    final analysis = await AiService.analyzeParlay(info.toString());
     setState(() => _aiAnalysis = analysis);
   }
 }
