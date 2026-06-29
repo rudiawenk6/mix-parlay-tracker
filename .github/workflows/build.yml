@@ -33,11 +33,33 @@ jobs:
           # Copy lib/ and pubspec.yaml
           cp -r $GITHUB_WORKSPACE/lib/* $RUNNER_TEMP/parlay_app/lib/
           cp $GITHUB_WORKSPACE/pubspec.yaml $RUNNER_TEMP/parlay_app/pubspec.yaml
+
+      - name: Copy Android network config
+        run: |
+          APP_DIR=$RUNNER_TEMP/parlay_app/android/app/src/main
           
-          # Copy our AndroidManifest.xml if it exists
+          # Copy AndroidManifest.xml
           if [ -f "$GITHUB_WORKSPACE/android/AndroidManifest.xml" ]; then
-            cp $GITHUB_WORKSPACE/android/AndroidManifest.xml $RUNNER_TEMP/parlay_app/android/app/src/main/AndroidManifest.xml
+            cp $GITHUB_WORKSPACE/android/AndroidManifest.xml $APP_DIR/AndroidManifest.xml
           fi
+          
+          # Copy network security config
+          if [ -f "$GITHUB_WORKSPACE/android/network_security_config.xml" ]; then
+            mkdir -p $APP_DIR/res/xml
+            cp $GITHUB_WORKSPACE/android/network_security_config.xml $APP_DIR/res/xml/network_security_config.xml
+          fi
+
+      - name: Verify Android config
+        run: |
+          APP_DIR=$RUNNER_TEMP/parlay_app/android/app/src/main
+          echo "=== AndroidManifest ==="
+          head -10 $APP_DIR/AndroidManifest.xml
+          echo ""
+          echo "=== Network Security Config ==="
+          cat $APP_DIR/res/xml/network_security_config.xml
+          echo ""
+          echo "=== Internet Permission ==="
+          grep -c "INTERNET" $APP_DIR/AndroidManifest.xml
 
       - name: Install dependencies
         working-directory: ${{ runner.temp }}/parlay_app
