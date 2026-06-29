@@ -1,0 +1,10 @@
+*.apk
+*.ipa
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+lib/generated/
