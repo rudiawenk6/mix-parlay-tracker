@@ -1,17 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'settings_service.dart';
+import 'ai_models.dart';
 
-/// AI analysis via OpenRouter API
+/// AI analysis via OpenRouter API (FREE models only)
 class AiService {
   static const _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
   /// Analyze parlay picks using AI
-  static Future<String> analyzeParlay(String parlayInfo) async {
+  static Future<String> analyzeParlay(String parlayInfo, {String? modelId}) async {
     final settings = SettingsService.instance;
     if (!settings.hasOpenRouterKey) {
       return 'Set OpenRouter API key first in Settings.';
     }
+
+    final model = modelId ?? settings.aiModel;
 
     try {
       final resp = await http.post(
@@ -22,7 +25,7 @@ class AiService {
           'HTTP-Referer': 'https://mix-parlay-tracker.app',
         },
         body: json.encode({
-          'model': 'google/gemini-2.0-flash-001',
+          'model': model,
           'messages': [
             {
               'role': 'system',
@@ -36,7 +39,7 @@ Rules based on BWB365 winning pattern (29/29 legs ALL WIN):
 - Chile Cup = AH favorite small + Over
 - Brazil Serie B = O/U 2.5 balanced
 - 10 leg max, 1 match = 1 leg only (no duplicate)
-- Answer in Indonesian.''',
+- Answer in Indonesian. Be concise and practical.''',
             },
             {
               'role': 'user',
@@ -50,8 +53,10 @@ Rules based on BWB365 winning pattern (29/29 legs ALL WIN):
       if (resp.statusCode == 200) {
         final data = json.decode(resp.body);
         return data['choices'][0]['message']['content'] ?? 'No analysis';
+      } else if (resp.statusCode == 402 || resp.statusCode == 429) {
+        return 'Rate limit or quota exceeded. Try a different free model in Settings.';
       } else {
-        return 'AI Error: ${resp.statusCode}';
+        return 'AI Error ${resp.statusCode}: ${resp.body.substring(0, 200)}';
       }
     } catch (e) {
       return 'AI Error: $e';

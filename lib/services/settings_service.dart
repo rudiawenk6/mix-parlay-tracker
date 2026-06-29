@@ -11,6 +11,7 @@ class SettingsService {
   static const _keyBwbDomain = 'bwb_domain';
   static const _keyBankroll = 'bankroll';
   static const _keyParlayStrategy = 'parlay_strategy';
+  static const _keyAiModel = 'ai_model';
 
   static SettingsService? _instance;
   static SettingsService get instance => _instance ??= SettingsService._();
@@ -26,6 +27,7 @@ class SettingsService {
   String bwbDomain = 'letsaiabt365.com';
   double bankroll = 7500000;
   String parlayStrategy = 'bwb365'; // bwb365, oddeven, conservative
+  String aiModel = 'google/gemini-2.0-flash-001'; // default free model
 
   // Getters (never expose raw values in logs)
   String get openRouterKey => _openRouterKey;
@@ -53,6 +55,7 @@ class SettingsService {
     bwbDomain = prefs.getString(_keyBwbDomain) ?? 'letsaiabt365.com';
     bankroll = prefs.getDouble(_keyBankroll) ?? 7500000;
     parlayStrategy = prefs.getString(_keyParlayStrategy) ?? 'bwb365';
+    aiModel = prefs.getString(_keyAiModel) ?? 'google/gemini-2.0-flash-001';
   }
 
   Future<bool> saveOpenRouterKey(String key) async {
@@ -95,6 +98,12 @@ class SettingsService {
     parlayStrategy = strategy;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyParlayStrategy, strategy);
+  }
+
+  Future<void> saveAiModel(String model) async {
+    aiModel = model;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyAiModel, model);
   }
 
   /// Clear all sensitive data (logout)

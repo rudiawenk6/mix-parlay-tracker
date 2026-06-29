@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
 import '../services/crypto_service.dart';
+import '../services/ai_models.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -248,6 +249,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             decoration: const InputDecoration(border: OutlineInputBorder()),
           ),
+          const SizedBox(height: 20),
+
+          // AI MODEL (FREE only)
+          _sectionHeader('AI Model (Free Only)'),
+          DropdownButtonFormField<String>(
+            value: _settings.aiModel,
+            items: AiModels.freeModels.map((m) => DropdownMenuItem(
+              value: m['id'],
+              child: Text('${m['name']} (${m['provider']}) [${m['ctx']}]', style: const TextStyle(fontSize: 13)),
+            )).toList(),
+            onChanged: (v) {
+              if (v != null) {
+                _settings.saveAiModel(v);
+                setState(() {});
+              }
+            },
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              suffixIcon: _settings.hasOpenRouterKey ? null : const Tooltip(
+                message: 'Set OpenRouter key first',
+                child: Icon(Icons.warning, color: Colors.orange, size: 18),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text('Selected: ${AiModels.getModelName(_settings.aiModel)} by ${AiModels.getProvider(_settings.aiModel)}',
+            style: const TextStyle(fontSize: 11, color: Colors.grey)),
           const SizedBox(height: 30),
 
           // CLEAR
