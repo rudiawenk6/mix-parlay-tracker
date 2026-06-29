@@ -255,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _sectionHeader('AI Model (Free Only)'),
           DropdownButtonFormField<String>(
             value: _settings.aiModel,
-            items: AiModels.freeModels.map((m) => DropdownMenuItem(
+            items: AiModels.allModels.map((m) => DropdownMenuItem(
               value: m['id'],
               child: Text('${m['name']} (${m['provider']}) [${m['ctx']}]', style: const TextStyle(fontSize: 13)),
             )).toList(),

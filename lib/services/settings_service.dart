@@ -27,7 +27,7 @@ class SettingsService {
   String bwbDomain = 'letsaiabt365.com';
   double bankroll = 7500000;
   String parlayStrategy = 'bwb365'; // bwb365, oddeven, conservative
-  String aiModel = 'google/gemini-2.0-flash-001'; // default free model
+  String aiModel = 'openrouter/owl-alpha:free'; // default free model
 
   // Getters (never expose raw values in logs)
   String get openRouterKey => _openRouterKey;
@@ -55,7 +55,7 @@ class SettingsService {
     bwbDomain = prefs.getString(_keyBwbDomain) ?? 'letsaiabt365.com';
     bankroll = prefs.getDouble(_keyBankroll) ?? 7500000;
     parlayStrategy = prefs.getString(_keyParlayStrategy) ?? 'bwb365';
-    aiModel = prefs.getString(_keyAiModel) ?? 'google/gemini-2.0-flash-001';
+    aiModel = prefs.getString(_keyAiModel) ?? 'openrouter/owl-alpha:free';
   }
 
   Future<bool> saveOpenRouterKey(String key) async {

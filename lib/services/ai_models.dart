@@ -1,7 +1,7 @@
-/// Available free models on OpenRouter
+/// Available FREE models on OpenRouter (with :free suffix)
 class AiModels {
   static const List<Map<String, String>> freeModels = [
-    {'id': 'google/gemini-2.0-flash-001', 'name': 'Gemini 2.0 Flash', 'provider': 'Google', 'ctx': '1M'},
+    {'id': 'google/gemini-2.0-flash-001:free', 'name': 'Gemini 2.0 Flash', 'provider': 'Google', 'ctx': '1M'},
     {'id': 'meta-llama/llama-4-maverick:free', 'name': 'Llama 4 Maverick', 'provider': 'Meta', 'ctx': '128K'},
     {'id': 'meta-llama/llama-4-scout:free', 'name': 'Llama 4 Scout', 'provider': 'Meta', 'ctx': '128K'},
     {'id': 'meta-llama/llama-3.3-70b-instruct:free', 'name': 'Llama 3.3 70B', 'provider': 'Meta', 'ctx': '128K'},
@@ -15,17 +15,26 @@ class AiModels {
     {'id': 'nvidia/llama-3.1-nemotron-70b-instruct:free', 'name': 'Nemotron 70B', 'provider': 'NVIDIA', 'ctx': '128K'},
   ];
 
-  static String defaultModel = freeModels[0]['id']!;
+  static String defaultModel = 'openrouter/owl-alpha:free';
   
   static String getModelName(String id) {
+    // Check custom models first
+    if (id.contains('owl')) return 'Owl Alpha';
     final found = freeModels.where((m) => m['id'] == id);
     if (found.isNotEmpty) return found.first['name']!;
-    return id.split('/').last;
+    return id.split('/').last.replaceAll(':free', '');
   }
   
   static String getProvider(String id) {
+    if (id.contains('owl')) return 'OpenRouter';
     final found = freeModels.where((m) => m['id'] == id);
     if (found.isNotEmpty) return found.first['provider']!;
     return '';
   }
+
+  /// All models including owl for display
+  static List<Map<String, String>> get allModels => [
+    {'id': 'openrouter/owl-alpha:free', 'name': 'Owl Alpha', 'provider': 'OpenRouter', 'ctx': '128K'},
+    ...freeModels,
+  ];
 }
