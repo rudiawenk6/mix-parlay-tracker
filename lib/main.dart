@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/add_parlay_screen.dart';
+import 'screens/generate_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/stats_screen.dart';
+import 'screens/settings_screen.dart';
 import 'providers/parlay_provider.dart';
+import 'services/settings_service.dart';
 import 'package:provider/provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SettingsService.instance.load();
   runApp(const MixParlayTrackerApp());
 }
 
@@ -44,8 +49,10 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
+    GenerateScreen(),
     HistoryScreen(),
     StatsScreen(),
+    SettingsScreen(),
   ];
 
   @override
@@ -57,9 +64,7 @@ class _MainScreenState extends State<MainScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const AddParlayScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const AddParlayScreen()),
                 );
               },
               child: const Icon(Icons.add),
@@ -70,8 +75,10 @@ class _MainScreenState extends State<MainScreen> {
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.auto_fix_high), label: 'Generate'),
           NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
+          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );
