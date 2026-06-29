@@ -9,10 +9,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout app code
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
@@ -21,8 +21,31 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
           channel: 'stable'
+
+      - name: Create Flutter project
+        run: |
+          flutter create --org com.rudiawenk6 --project-name mix_parlay_tracker --platforms android .
+          # Remove default test file that may conflict
+          rm -f test/widget_test.dart
+
+      - name: Copy app source
+        run: |
+          # Copy our lib code over the generated one
+          rm -rf lib/
+          mkdir -p lib
+          # We need to preserve our source - checkout again to a temp dir
+          
+      - name: Checkout app source to temp
+        uses: actions/checkout@v4
+        with:
+          path: app-src
+
+      - name: Replace generated code with our code
+        run: |
+          cp -r app-src/lib/* lib/ 2>/dev/null || true
+          cp app-src/pubspec.yaml pubspec.yaml
+          cp -r app-src/assets assets 2>/dev/null || true
 
       - name: Install dependencies
         run: flutter pub get
@@ -34,9 +57,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mix-parlay-tracker
-          path: build/app/outputs/flutter-apk/app-release.apka
+          path: build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Build info
-        run: |
-          echo "APK built successfully!"
-          ls -lh build/app/outputs/flutter-apk/app-release.apka
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Mix Parlay Tracker v${{ github.run_number }}
+          files: build/app/outputs/flutter-apk/app-release.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

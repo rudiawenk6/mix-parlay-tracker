@@ -1,10 +1,30 @@
-*.apk
-*.ipa
-build/
+# Library files
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
 .pub/
-lib/generated/
+
+# Build outputs
+build/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flutter
+android/
+ios/
+linux/
+macos/
+web/
+windows/
+linux/
