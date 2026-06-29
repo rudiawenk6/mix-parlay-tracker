@@ -23,7 +23,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Generate Parlay'),
+        title: const Text('Generate (Today→Tomorrow 9am)'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchOdds),
         ],
@@ -197,10 +197,11 @@ class _GenerateScreenState extends State<GenerateScreen> {
         _matches = matches;
         _loading = false;
         if (matches.isEmpty) {
-          _status = 'No matches found. Try different domain in Settings. '
-              'Common: letsaiabt365.com, bwb365liga.com, bwbet365.com';
+        _status = 'No matches for TODAY→TOMORROW 09:00.\n'
+        'Window: 29/06 00:00 → 01/07 09:00\n'
+        'Try different domain in Settings.';
         } else {
-          _status = 'Found ${matches.length} matches. Tap Generate!';
+        _status = '${matches.length} matches (today→tomorrow 9am). Tap Generate!';
         }
       });
     } catch (e) {
