@@ -25,7 +25,7 @@ class ParlayLeg {
     this.status = 'pending',
   });
 
-  double get totalGoals => (homeScore ?? 0) + (awayScore ?? 0);
+  double get totalGoals => (homeScore ?? 0).toDouble() + (awayScore ?? 0).toDouble();
 
   double get effectiveOdds =>
       status == 'refund' || status == 'push' ? 1.0 : odds;
