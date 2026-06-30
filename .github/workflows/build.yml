@@ -45,7 +45,7 @@ jobs:
           
           # Create res/xml directory and network security config
           mkdir -p $APP_DIR/res/xml
-          cat > $APP_DIR/res/xml/network_security_config.xml << 'XML'
+          cat > $APP_DIR/res/xml/network_security_config.xml << 'XMLEOF'
           <?xml version="1.0" encoding="utf-8"?>
           <network-security-config>
               <base-config cleartextTrafficPermitted="true">
@@ -64,7 +64,7 @@ jobs:
                   <domain includeSubdomains="true">openrouter.ai</domain>
               </domain-config>
           </network-security-config>
-          XML
+          XMLEOF
 
       - name: Verify Android config
         run: |

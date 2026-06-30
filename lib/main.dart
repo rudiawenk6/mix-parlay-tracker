@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/add_parlay_screen.dart';
 import 'screens/generate_screen.dart';
+import 'screens/mourinho_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/stats_screen.dart';
 import 'screens/settings_screen.dart';
@@ -49,6 +50,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
+    MourinhoScreen(),
     GenerateScreen(),
     HistoryScreen(),
     StatsScreen(),
@@ -75,6 +77,7 @@ class _MainScreenState extends State<MainScreen> {
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.analytics), label: 'Cik Edi'),
           NavigationDestination(icon: Icon(Icons.auto_fix_high), label: 'Generate'),
           NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),

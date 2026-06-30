@@ -18,6 +18,7 @@ dependencies:
   encrypt: ^5.0.3
   crypto: ^3.0.3
   dart_jsonwebtoken: ^2.14.0
+  collection: ^1.18.0
 
 dev_dependencies:
   flutter_test:
