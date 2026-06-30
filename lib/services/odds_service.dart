@@ -104,11 +104,12 @@ class OddsService {
       final month = int.parse(dateParts[1]);
       final timeParts = parts[1].split(':');
       if (timeParts.length != 2) return false;
-      final hour = int.parse(timeParts[0]);
-      final val = month * 1000000 + day * 10000 + hour * 100 + int.parse(timeParts[1]);
-      const start = 6290000;
-      const end = 7010900;
-      return val >= start && val <= end;
+      // Parse match month/day and compare with today + next 2 days
+      final now = DateTime.now();
+      final matchDate = DateTime(now.year, month, day);
+      final diff = matchDate.difference(DateTime(now.year, now.month, now.day)).inDays;
+      // Accept matches from today up to 2 days ahead
+      return diff >= 0 && diff <= 2;
     } catch (_) {
       return false;
     }
