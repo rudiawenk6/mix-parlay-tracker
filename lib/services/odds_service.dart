@@ -2,11 +2,33 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'settings_service.dart';
 
+part 'odds_trimmer.dart';
+
 class OddsService {
   static Future<List<OddsMatch>> fetchOdds({bool liveOnly = false}) async {
     final settings = SettingsService.instance;
     final ot = liveOnly ? 't' : 'r';
-    final domain = settings.bwbDomain;
+
+    if (liveOnly) {
+      // BRUTE: get everything from letsaiabt365 and prune AFTER parse
+      final matches = await _fetchRaw(settings.bwbDomain, 'r');
+      final seen = <String>{};
+      final out = <OddsMatch>[];
+      for (final m in matches) {
+        final key = '${m.home}_${m.away}';
+        if (key.isEmpty) continue;
+        if (seen.contains(key)) continue;
+        if (!_isToday(m.time)) continue;
+        seen.add(key);
+        out.add(m);
+      }
+      return out;
+    }
+
+    return await _fetchRaw(settings.bwbDomain, 'r');
+  }
+
+  static Future<List<OddsMatch>> _fetchRaw(String domain, String ot) async {
     final domains = [domain];
     if (domain != 'letsaiabt365.com') domains.add('letsaiabt365.com');
     if (domain != 'bwbet365.com') domains.add('bwbet365.com');
@@ -44,51 +66,43 @@ class OddsService {
 
         for (final league in matchesRoot) {
           if (league is! List) continue;
-          
-          // New API structure: league[0] = info, league[1] = matches list
-          // Old API structure: league[0] = info, league[1+] = match arrays
+
           String leagueName = 'Unknown';
-          
-          // Extract league name from league[0]
+
           if (league.isNotEmpty && league[0] is List) {
             final info = league[0] as List;
             if (info.length > 1 && info[1] is String) {
               leagueName = info[1];
             }
           }
-          
-          // Find matches: could be league[1] (new) or league[1+] (old)
+
           for (var i = 1; i < league.length; i++) {
             final item = league[i];
             if (item is! List) continue;
-            
-            // New format: league[1] is a list of match arrays
+
             if (item.isNotEmpty && item[0] is List) {
               for (final m in item) {
                 if (m is! List || m.length < 30) continue;
                 try {
                   final match = OddsMatch.fromArray(m, leagueName);
-                  if (!_isInBettingWindow(match.time)) continue;
                   if (match.x12Home == 0 && match.x12Draw == 0 && match.x12Away == 0) continue;
                   if (match.ouOver == 0 && match.ouUnder == 0 && match.ahHome == 0) continue;
                   final key = '${match.home}_${match.away}';
                   if (!seen.contains(key) && match.home.isNotEmpty && match.away.isNotEmpty) {
                     seen.add(key);
-                    matches.add(match);
+                    matches.add(_trimMatchTime(match));
                   }
                 } catch (_) {}
               }
             } else if (item.length >= 30) {
-              // Old format: league[1+], league[2+] are match arrays directly
               try {
                 final match = OddsMatch.fromArray(item, leagueName);
-                if (!_isInBettingWindow(match.time)) continue;
                 if (match.x12Home == 0 && match.x12Draw == 0 && match.x12Away == 0) continue;
                 if (match.ouOver == 0 && match.ouUnder == 0 && match.ahHome == 0) continue;
                 final key = '${match.home}_${match.away}';
                 if (!seen.contains(key) && match.home.isNotEmpty && match.away.isNotEmpty) {
                   seen.add(key);
-                  matches.add(match);
+                  matches.add(_trimMatchTime(match));
                 }
               } catch (_) {}
             }
@@ -101,73 +115,6 @@ class OddsService {
       }
     }
     return [];
-  }
-
-  static bool _isInBettingWindow(String timeStr) {
-    if (timeStr.isEmpty) return false;
-    try {
-      final parts = timeStr.split(' ');
-      if (parts.length != 2) return false;
-      final dateParts = parts[0].split('/');
-      if (dateParts.length != 2) return false;
-      final day = int.parse(dateParts[0]);
-      final month = int.parse(dateParts[1]);
-      final timeParts = parts[1].split(':');
-      if (timeParts.length != 2) return false;
-      // Parse match month/day and compare with today + next 2 days
-      final now = DateTime.now();
-      final matchDate = DateTime(now.year, month, day);
-      final diff = matchDate.difference(DateTime(now.year, now.month, now.day)).inDays;
-      // Accept matches from today up to 2 days ahead
-      return diff >= 0 && diff <= 2;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static List<ParlayPick> generatePicks(List<OddsMatch> matches, {int maxLegs = 10}) {
-    final picks = <ParlayPick>[];
-    final usedTeams = <String>{};
-
-    final ouPicks = <ParlayPick>[];
-    final ahPicks = <ParlayPick>[];
-    final x12Picks = <ParlayPick>[];
-
-    for (final m in matches) {
-      if (usedTeams.contains(m.home) || usedTeams.contains(m.away)) continue;
-
-      if (m.ouOver >= 1.5 && m.ouOver <= 2.3) {
-        ouPicks.add(ParlayPick(match: m, pick: 'Over 2.5', odds: m.ouOver, market: 'O/U', confidence: m.ouOver < 1.9 ? 'HIGH' : 'MED'));
-      }
-      if (m.ouUnder >= 1.5 && m.ouUnder <= 2.3) {
-        ouPicks.add(ParlayPick(match: m, pick: 'Under 2.5', odds: m.ouUnder, market: 'O/U', confidence: m.ouUnder < 1.9 ? 'HIGH' : 'MED'));
-      }
-      if (m.ahHome >= 1.5 && m.ahHome <= 2.2 && m.ahLine.abs() <= 0.75) {
-        ahPicks.add(ParlayPick(match: m, pick: 'AH Home ${m.ahLine}', odds: m.ahHome, market: 'AH', confidence: m.ahLine.abs() <= 0.5 ? 'HIGH' : 'MED'));
-      }
-      if (m.x12Home >= 2.0 && m.x12Home <= 2.5) {
-        x12Picks.add(ParlayPick(match: m, pick: '1X2 Home', odds: m.x12Home, market: '1X2', confidence: 'LOW'));
-      }
-    }
-
-    ouPicks.sort((a, b) => a.odds.compareTo(b.odds));
-    ahPicks.sort((a, b) => a.odds.compareTo(b.odds));
-    x12Picks.sort((a, b) => a.odds.compareTo(b.odds));
-
-    for (final p in ouPicks) {
-      if (usedTeams.contains(p.match.home) || usedTeams.contains(p.match.away)) continue;
-      if (picks.length < 5) { picks.add(p); usedTeams.add(p.match.home); usedTeams.add(p.match.away); }
-    }
-    for (final p in ahPicks) {
-      if (usedTeams.contains(p.match.home) || usedTeams.contains(p.match.away)) continue;
-      if (picks.length < 8) { picks.add(p); usedTeams.add(p.match.home); usedTeams.add(p.match.away); }
-    }
-    for (final p in x12Picks) {
-      if (usedTeams.contains(p.match.home) || usedTeams.contains(p.match.away)) continue;
-      if (picks.length < maxLegs) { picks.add(p); usedTeams.add(p.match.home); usedTeams.add(p.match.away); }
-    }
-
-    return picks;
   }
 }
 
