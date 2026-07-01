@@ -18,16 +18,26 @@ class OddsService {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 13)',
           'Referer': 'https://$d/',
           'Accept': '*/*',
-        }).timeout(const Duration(seconds: 15));
+        }).timeout(const Duration(seconds: 30));
 
-        if (resp.statusCode != 200) continue;
+        if (resp.statusCode != 200) {
+          if (d == domains.last) return [];
+          continue;
+        }
 
         var text = resp.body.trim();
         while (text.startsWith('(')) text = text.substring(1);
         while (text.endsWith(')') || text.endsWith(';')) text = text.substring(0, text.length - 1);
         text = text.replaceAll("'", '"');
 
-        final data = json.decode(text) as List;
+        late final List data;
+        try {
+          data = json.decode(text) as List;
+        } on FormatException catch (e) {
+          if (d == domains.last) return [];
+          continue;
+        }
+
         final matchesRoot = data[3] as List;
         final matches = <OddsMatch>[];
         final seen = <String>{};
