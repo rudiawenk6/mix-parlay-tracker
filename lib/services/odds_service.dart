@@ -2,29 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'settings_service.dart';
 
-part 'odds_trimmer.dart';
-
 class OddsService {
   static Future<List<OddsMatch>> fetchOdds({bool liveOnly = false}) async {
     final settings = SettingsService.instance;
-    final ot = liveOnly ? 't' : 'r';
-
-    if (liveOnly) {
-      // BRUTE: get everything from letsaiabt365 and prune AFTER parse
-      final matches = await _fetchRaw(settings.bwbDomain, 'r');
-      final seen = <String>{};
-      final out = <OddsMatch>[];
-      for (final m in matches) {
-        final key = '${m.home}_${m.away}';
-        if (key.isEmpty) continue;
-        if (seen.contains(key)) continue;
-        if (!_isToday(m.time)) continue;
-        seen.add(key);
-        out.add(m);
-      }
-      return out;
-    }
-
     return await _fetchRaw(settings.bwbDomain, 'r');
   }
 
@@ -40,26 +20,16 @@ class OddsService {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 13)',
           'Referer': 'https://$d/',
           'Accept': '*/*',
-        }).timeout(const Duration(seconds: 30));
+        }).timeout(const Duration(seconds: 15));
 
-        if (resp.statusCode != 200) {
-          if (d == domains.last) return [];
-          continue;
-        }
+        if (resp.statusCode != 200) continue;
 
         var text = resp.body.trim();
         while (text.startsWith('(')) text = text.substring(1);
         while (text.endsWith(')') || text.endsWith(';')) text = text.substring(0, text.length - 1);
         text = text.replaceAll("'", '"');
 
-        late final List data;
-        try {
-          data = json.decode(text) as List;
-        } on FormatException catch (e) {
-          if (d == domains.last) return [];
-          continue;
-        }
-
+        final data = json.decode(text) as List;
         final matchesRoot = data[3] as List;
         final matches = <OddsMatch>[];
         final seen = <String>{};
@@ -85,24 +55,26 @@ class OddsService {
                 if (m is! List || m.length < 30) continue;
                 try {
                   final match = OddsMatch.fromArray(m, leagueName);
+                  if (!_isInBettingWindow(match.time)) continue;
                   if (match.x12Home == 0 && match.x12Draw == 0 && match.x12Away == 0) continue;
                   if (match.ouOver == 0 && match.ouUnder == 0 && match.ahHome == 0) continue;
                   final key = '${match.home}_${match.away}';
                   if (!seen.contains(key) && match.home.isNotEmpty && match.away.isNotEmpty) {
                     seen.add(key);
-                    matches.add(_trimMatchTime(match));
+                    matches.add(match);
                   }
                 } catch (_) {}
               }
             } else if (item.length >= 30) {
               try {
                 final match = OddsMatch.fromArray(item, leagueName);
+                if (!_isInBettingWindow(match.time)) continue;
                 if (match.x12Home == 0 && match.x12Draw == 0 && match.x12Away == 0) continue;
                 if (match.ouOver == 0 && match.ouUnder == 0 && match.ahHome == 0) continue;
                 final key = '${match.home}_${match.away}';
                 if (!seen.contains(key) && match.home.isNotEmpty && match.away.isNotEmpty) {
                   seen.add(key);
-                  matches.add(_trimMatchTime(match));
+                  matches.add(match);
                 }
               } catch (_) {}
             }
@@ -115,6 +87,71 @@ class OddsService {
       }
     }
     return [];
+  }
+
+  static bool _isInBettingWindow(String timeStr) {
+    if (timeStr.isEmpty) return false;
+    try {
+      final parts = timeStr.split(' ');
+      if (parts.length != 2) return false;
+      final dateParts = parts[0].split('/');
+      if (dateParts.length != 2) return false;
+      final day = int.parse(dateParts[0]);
+      final month = int.parse(dateParts[1]);
+      final timeParts = parts[1].split(':');
+      if (timeParts.length != 2) return false;
+      final now = DateTime.now();
+      final matchDate = DateTime(now.year, month, day);
+      final diff = matchDate.difference(DateTime(now.year, now.month, now.day)).inDays;
+      return diff >= 0 && diff <= 2;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static List<ParlayPick> generatePicks(List<OddsMatch> matches, {int maxLegs = 10}) {
+    final picks = <ParlayPick>[];
+    final usedTeams = <String>{};
+
+    final ouPicks = <ParlayPick>[];
+    final ahPicks = <ParlayPick>[];
+    final x12Picks = <ParlayPick>[];
+
+    for (final m in matches) {
+      if (usedTeams.contains(m.home) || usedTeams.contains(m.away)) continue;
+
+      if (m.ouOver >= 1.5 && m.ouOver <= 2.3) {
+        ouPicks.add(ParlayPick(match: m, pick: 'Over 2.5', odds: m.ouOver, market: 'O/U', confidence: m.ouOver < 1.9 ? 'HIGH' : 'MED'));
+      }
+      if (m.ouUnder >= 1.5 && m.ouUnder <= 2.3) {
+        ouPicks.add(ParlayPick(match: m, pick: 'Under 2.5', odds: m.ouUnder, market: 'O/U', confidence: m.ouUnder < 1.9 ? 'HIGH' : 'MED'));
+      }
+      if (m.ahHome >= 1.5 && m.ahHome <= 2.2 && m.ahLine.abs() <= 0.75) {
+        ahPicks.add(ParlayPick(match: m, pick: 'AH Home ${m.ahLine}', odds: m.ahHome, market: 'AH', confidence: m.ahLine.abs() <= 0.5 ? 'HIGH' : 'MED'));
+      }
+      if (m.x12Home >= 2.0 && m.x12Home <= 2.5) {
+        x12Picks.add(ParlayPick(match: m, pick: '1X2 Home', odds: m.x12Home, market: '1X2', confidence: 'LOW'));
+      }
+    }
+
+    ouPicks.sort((a, b) => a.odds.compareTo(b.odds));
+    ahPicks.sort((a, b) => a.odds.compareTo(b.odds));
+    x12Picks.sort((a, b) => a.odds.compareTo(b.odds));
+
+    for (final p in ouPicks) {
+      if (usedTeams.contains(p.match.home) || usedTeams.contains(p.match.away)) continue;
+      if (picks.length < 5) { picks.add(p); usedTeams.add(p.match.home); usedTeams.add(p.match.away); }
+    }
+    for (final p in ahPicks) {
+      if (usedTeams.contains(p.match.home) || usedTeams.contains(p.match.away)) continue;
+      if (picks.length < 8) { picks.add(p); usedTeams.add(p.match.home); usedTeams.add(p.match.away); }
+    }
+    for (final p in x12Picks) {
+      if (usedTeams.contains(p.match.home) || usedTeams.contains(p.match.away)) continue;
+      if (picks.length < maxLegs) { picks.add(p); usedTeams.add(p.match.home); usedTeams.add(p.match.away); }
+    }
+
+    return picks;
   }
 }
 
