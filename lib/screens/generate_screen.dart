@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../services/odds_service.dart';
 import '../services/ai_service.dart';
 import '../services/telegram_service.dart';
@@ -31,7 +32,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Controls
           Card(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -60,7 +60,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                     const SizedBox(height: 8),
                     Text(_status, style: TextStyle(
                       fontSize: 12,
-                      color: _status.contains('Error') || _status.contains('No match') ? Colors.red : Colors.grey,
+                      color: _status.contains('Error') || _status.contains('No matches') ? Colors.red : Colors.grey,
                     )),
                   ],
                   const SizedBox(height: 4),
@@ -71,7 +71,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Available matches
           if (_matches.isNotEmpty) ...[
             Text('${_matches.length} matches found', style: const TextStyle(fontSize: 12, color: Colors.green)),
             const SizedBox(height: 8),
@@ -81,7 +80,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
               label: Text('Generate $_targetLegs Team Parlay'),
             ),
             const SizedBox(height: 8),
-            // Show sample matches
             ExpansionTile(
               title: Text('Available Matches (${_matches.length})', style: const TextStyle(fontSize: 13)),
               children: _matches.take(20).map((m) => ListTile(
@@ -93,7 +91,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
             const SizedBox(height: 16),
           ],
 
-          // Generated picks
           if (_picks.isNotEmpty) ...[
             Card(
               color: Colors.green.shade900,
@@ -134,7 +131,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
             }),
             const SizedBox(height: 16),
 
-            // Action buttons
             Row(
               children: [
                 Expanded(
@@ -182,6 +178,13 @@ class _GenerateScreenState extends State<GenerateScreen> {
     );
   }
 
+  String _windowLabel() {
+    final now = DateTime.now();
+    final today = DateFormat('dd/MM').format(now);
+    final tomorrow = DateFormat('dd/MM').format(DateTime(now.year, now.month, now.day + 1));
+    return 'Window: $today 00:00 → $tomorrow 09:00';
+  }
+
   double _totalOdds() {
     double r = 1.0;
     for (final p in _picks) r *= p.odds;
@@ -193,18 +196,18 @@ class _GenerateScreenState extends State<GenerateScreen> {
 
     try {
       final matches = await OddsService.fetchOdds();
+      if (!mounted) return;
       setState(() {
         _matches = matches;
         _loading = false;
         if (matches.isEmpty) {
-        _status = 'No matches for TODAY→TOMORROW 09:00.\n'
-        'Window: 29/06 00:00 → 01/07 09:00\n'
-        'Try different domain in Settings.';
+          _status = 'No matches for TODAY→TOMORROW 09:00.\n${_windowLabel()}\nTry different domain in Settings.';
         } else {
-        _status = '${matches.length} matches (today→tomorrow 9am). Tap Generate!';
+          _status = '${matches.length} matches (today→tomorrow 9am). Tap Generate!';
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _status = 'Error: $e\nCheck domain in Settings and network connection.';
@@ -269,6 +272,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
     info.writeln('\nAnalyze: Which picks are risky? Any improvements?');
 
     final analysis = await AiService.analyzeParlay(info.toString());
+    if (!mounted) return;
     setState(() => _aiAnalysis = analysis);
   }
 }
