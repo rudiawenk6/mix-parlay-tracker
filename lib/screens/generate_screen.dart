@@ -19,12 +19,13 @@ class _GenerateScreenState extends State<GenerateScreen> {
   String _aiAnalysis = '';
   String _status = '';
   int _targetLegs = 10;
+  String _mode = 'tomorrow';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Generate (Today→Tomorrow 9am)'),
+        title: Text('Generate ${_modeLabel()}'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchOdds),
         ],
@@ -39,6 +40,18 @@ class _GenerateScreenState extends State<GenerateScreen> {
                 children: [
                   Row(
                     children: [
+                      const Text('Mode:'),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: _mode,
+                        items: const [
+                          DropdownMenuItem(value: 'today', child: Text('Today')),
+                          DropdownMenuItem(value: 'tomorrow', child: Text('Tomorrow')),
+                          DropdownMenuItem(value: 'finished', child: Text('Finished')),
+                        ],
+                        onChanged: (v) => setState(() { _mode = v ?? 'tomorrow'; }),
+                      ),
+                      const SizedBox(width: 12),
                       const Text('Legs:'),
                       const SizedBox(width: 8),
                       DropdownButton<int>(
@@ -178,6 +191,18 @@ class _GenerateScreenState extends State<GenerateScreen> {
     );
   }
 
+  String _modeLabel() {
+    switch (_mode) {
+      case 'today':
+        return 'Today';
+      case 'finished':
+        return 'Finished';
+      case 'tomorrow':
+      default:
+        return 'Tomorrow';
+    }
+  }
+
   String _windowLabel() {
     final now = DateTime.now();
     final today = DateFormat('dd/MM').format(now);
@@ -192,18 +217,18 @@ class _GenerateScreenState extends State<GenerateScreen> {
   }
 
   Future<void> _fetchOdds() async {
-    setState(() { _loading = true; _status = 'Fetching from ${SettingsService.instance.bwbDomain}...'; });
+    setState(() { _loading = true; _status = 'Fetching [${_modeLabel()}] from ${SettingsService.instance.bwbDomain}...'; });
 
     try {
-      final matches = await OddsService.fetchOdds();
+      final matches = await OddsService.fetchOdds(mode: _mode);
       if (!mounted) return;
       setState(() {
         _matches = matches;
         _loading = false;
         if (matches.isEmpty) {
-          _status = 'No matches for TODAY→TOMORROW 09:00.\n${_windowLabel()}\nTry different domain in Settings.';
+          _status = 'No matches [${_modeLabel()}].\n${_windowLabel()}\nTry different domain in Settings.';
         } else {
-          _status = '${matches.length} matches (today→tomorrow 9am). Tap Generate!';
+          _status = '${matches.length} matches [${_modeLabel()}]. Tap Generate!';
         }
       });
     } catch (e) {

@@ -3,12 +3,20 @@ import 'package:http/http.dart' as http;
 import 'settings_service.dart';
 
 class OddsService {
-  static Future<List<OddsMatch>> fetchOdds({bool liveOnly = false}) async {
+  static Future<List<OddsMatch>> fetchOdds({String mode = 'tomorrow'}) async {
     final settings = SettingsService.instance;
-    return await _fetchRaw(settings.bwbDomain, 'r');
+    switch (mode) {
+      case 'today':
+        return await _fetchRaw(settings.bwbDomain, 't', filter: _isToday);
+      case 'finished':
+        return await _fetchRaw(settings.bwbDomain, 'r', filter: _isToday);
+      case 'tomorrow':
+      default:
+        return await _fetchRaw(settings.bwbDomain, 'r', filter: _isTomorrow);
+    }
   }
 
-  static Future<List<OddsMatch>> _fetchRaw(String domain, String ot) async {
+  static Future<List<OddsMatch>> _fetchRaw(String domain, String ot, {bool Function(String)? filter}) async {
     final domains = [domain];
     if (domain != 'letsaiabt365.com') domains.add('letsaiabt365.com');
     if (domain != 'bwbet365.com') domains.add('bwbet365.com');
@@ -55,7 +63,7 @@ class OddsService {
                 if (m is! List || m.length < 30) continue;
                 try {
                   final match = OddsMatch.fromArray(m, leagueName);
-                  if (!_isInBettingWindow(match.time)) continue;
+                  if (filter != null && !filter(match.time)) continue;
                   if (match.x12Home == 0 && match.x12Draw == 0 && match.x12Away == 0) continue;
                   if (match.ouOver == 0 && match.ouUnder == 0 && match.ahHome == 0) continue;
                   final key = '${match.home}_${match.away}';
@@ -68,7 +76,7 @@ class OddsService {
             } else if (item.length >= 30) {
               try {
                 final match = OddsMatch.fromArray(item, leagueName);
-                if (!_isInBettingWindow(match.time)) continue;
+                if (filter != null && !filter(match.time)) continue;
                 if (match.x12Home == 0 && match.x12Draw == 0 && match.x12Away == 0) continue;
                 if (match.ouOver == 0 && match.ouUnder == 0 && match.ahHome == 0) continue;
                 final key = '${match.home}_${match.away}';
@@ -89,7 +97,7 @@ class OddsService {
     return [];
   }
 
-  static bool _isInBettingWindow(String timeStr) {
+  static bool _parseTime(String timeStr) {
     if (timeStr.isEmpty) return false;
     try {
       final parts = timeStr.split(' ');
@@ -98,12 +106,30 @@ class OddsService {
       if (dateParts.length != 2) return false;
       final day = int.parse(dateParts[0]);
       final month = int.parse(dateParts[1]);
-      final timeParts = parts[1].split(':');
-      if (timeParts.length != 2) return false;
       final now = DateTime.now();
       final matchDate = DateTime(now.year, month, day);
       final diff = matchDate.difference(DateTime(now.year, now.month, now.day)).inDays;
-      return diff >= 0 && diff <= 2;
+      return diff == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static bool _isToday(String timeStr) => _parseTime(timeStr);
+
+  static bool _isTomorrow(String timeStr) {
+    if (timeStr.isEmpty) return false;
+    try {
+      final parts = timeStr.split(' ');
+      if (parts.length != 2) return false;
+      final dateParts = parts[0].split('/');
+      if (dateParts.length != 2) return false;
+      final day = int.parse(dateParts[0]);
+      final month = int.parse(dateParts[1]);
+      final now = DateTime.now();
+      final matchDate = DateTime(now.year, month, day);
+      final diff = matchDate.difference(DateTime(now.year, now.month, now.day)).inDays;
+      return diff == 1;
     } catch (_) {
       return false;
     }
