@@ -16,12 +16,13 @@ class _MourinhoScreenState extends State<MourinhoScreen> {
   bool _loading = false;
   String _status = '';
   String _analysis = '';
+  String _mode = 'tomorrow';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🔴⚪ Cik Edi Analysis'),
+        title: Text('🔴⚪ Cik Edi Analysis [${_modeLabel()}]'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchAndAnalyze),
         ],
@@ -37,6 +38,22 @@ class _MourinhoScreenState extends State<MourinhoScreen> {
                 children: [
                   const Text('MOURINHO MODE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const Text('"The team that concedes less wins"', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text('Mode:'),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: _mode,
+                        items: const [
+                          DropdownMenuItem(value: 'today', child: Text('Today')),
+                          DropdownMenuItem(value: 'tomorrow', child: Text('Tomorrow')),
+                          DropdownMenuItem(value: 'finished', child: Text('Finished')),
+                        ],
+                        onChanged: (v) => setState(() { _mode = v ?? 'tomorrow'; }),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   FilledButton.icon(
                     onPressed: _loading ? null : _fetchAndAnalyze,
@@ -144,11 +161,11 @@ class _MourinhoScreenState extends State<MourinhoScreen> {
     setState(() { _loading = true; _status = 'Fetching all matches...'; _analysis = ''; });
 
     try {
-      final matches = await OddsService.fetchOdds();
+      final matches = await OddsService.fetchOdds(mode: _mode);
       setState(() {
         _matches = matches;
         _loading = false;
-        _status = '${matches.length} matches. Analyzing tactics...';
+        _status = '${matches.length} matches [${_modeLabel()}]. Analyzing tactics...';
       });
 
       // AI Analysis
@@ -167,6 +184,18 @@ class _MourinhoScreenState extends State<MourinhoScreen> {
       }
     } catch (e) {
       setState(() { _loading = false; _status = 'Error: $e'; });
+    }
+  }
+
+  String _modeLabel() {
+    switch (_mode) {
+      case 'today':
+        return 'Today';
+      case 'finished':
+        return 'Finished';
+      case 'tomorrow':
+      default:
+        return 'Tomorrow';
     }
   }
 }
