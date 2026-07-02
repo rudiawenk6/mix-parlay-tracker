@@ -121,12 +121,11 @@ class OddsService {
     if (trimmed.contains('/')) return false;
     final parts = trimmed.split(':');
     if (parts.length != 2) return false;
-    final now = DateTime.now();
-    final matchMinutes = int.tryParse(parts[0]) * 60 + int.tryParse(parts[1]);
-    if (matchMinutes == null) return false;
-    final startMinutes = 0;
-    final endMinutes = 24 * 60;
-    return matchMinutes >= startMinutes && matchMinutes <= endMinutes;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return false;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return false;
+    return true;
   }
 
   static bool _isToday(String timeStr) {
