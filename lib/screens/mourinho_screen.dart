@@ -103,24 +103,35 @@ class _MourinhoScreenState extends State<MourinhoScreen> {
   }
 
   Widget _matchCard(OddsMatch m) {
-    // Simple confidence based on odds
+    double x12Home = m.x12Home;
+    double ouUnder = m.ouUnder;
+    double ahHome = m.ahHome;
+    double ahLine = m.ahLine;
+
+    if (x12Home.isNaN) x12Home = 0;
+    if (ouUnder.isNaN) ouUnder = 0;
+    if (ahHome.isNaN) ahHome = 0;
+    if (ahLine.isNaN) ahLine = 0;
+
     double confidence = 50;
     String pick = 'Under 2.5';
     double pickOdds = m.ouUnder;
-    
-    if (m.x12Home > 1.3 && m.x12Home < 2.0) {
-      confidence = 65 + ((2.0 - m.x12Home) * 20);
+
+    if (x12Home > 1.3 && x12Home < 2.0) {
+      confidence = 65 + ((2.0 - x12Home) * 20);
       pick = '1X2 Home';
       pickOdds = m.x12Home;
     }
-    if (m.ouUnder >= 1.7 && m.ouUnder <= 2.0) {
+    if (ouUnder >= 1.7 && ouUnder <= 2.0) {
       confidence = confidence + 5;
     }
-    if (m.ahHome >= 1.7 && m.ahHome <= 2.0 && m.ahLine.abs() <= 0.5) {
+    if (ahHome >= 1.7 && ahHome <= 2.0 && ahLine.abs() <= 0.5) {
       confidence = confidence + 8;
       pick = 'AH Home ${m.ahLine}';
       pickOdds = m.ahHome;
     }
+
+    if (confidence.isNaN || confidence.isInfinite) confidence = 50;
     confidence = confidence.clamp(0, 95);
 
     final confColor = confidence > 75 ? Colors.green : confidence > 60 ? Colors.orange : Colors.red;

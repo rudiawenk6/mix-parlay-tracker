@@ -52,11 +52,17 @@ Rules based on BWB365 winning pattern (29/29 legs ALL WIN):
 
       if (resp.statusCode == 200) {
         final data = json.decode(resp.body);
-        return data['choices'][0]['message']['content'] ?? 'No analysis';
+        final text = (data['choices']?[0]?['message']?['content'] ?? 'No analysis').toString();
+        if (text.length > 4000) {
+          return text.substring(0, 4000);
+        }
+        return text;
       } else if (resp.statusCode == 402 || resp.statusCode == 429) {
         return 'Rate limit or quota exceeded. Try a different free model in Settings.';
       } else {
-        return 'AI Error ${resp.statusCode}: ${resp.body.substring(0, 200)}';
+        final body = resp.body;
+        final preview = body.length <= 200 ? body : body.substring(0, 200);
+        return 'AI Error $resp.statusCode: $preview';
       }
     } catch (e) {
       return 'AI Error: $e';
