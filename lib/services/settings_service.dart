@@ -119,7 +119,7 @@ class SettingsService {
 
   /// Get full odds URL based on current domain
   String get oddsUrlLive =>
-      'https://$bwbDomain/_view/ParGenWFH.ashx?g=2&ot=t&wd=&ia=0&update=true';
+      'https://$bwbDomain/_view/ParGenWFH.ashx?g=2&ot=t&wd=&ia=0&update=true&r=';
   String get oddsUrlFinished =>
-      'https://$bwbDomain/_view/ParGenWFH.ashx?g=2&ot=r&wd=&ia=0&update=true';
+      'https://$bwbDomain/_view/ParGenWFH.ashx?g=2&ot=r&wd=&ia=0&update=true&r=';
 }

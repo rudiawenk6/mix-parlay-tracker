@@ -23,7 +23,7 @@ class OddsService {
 
     for (final d in domains) {
       try {
-        final url = 'https://$d/_view/ParGenWFH.ashx?g=2&ot=$ot&wd=&ia=0&update=true';
+        final url = 'https://$d/_view/ParGenWFH.ashx?g=2&ot=$ot&wd=&ia=0&update=true&r=';
         final resp = await http.get(Uri.parse(url), headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 13)',
           'Referer': 'https://$d/',
