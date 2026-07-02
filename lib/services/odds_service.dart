@@ -115,7 +115,24 @@ class OddsService {
     }
   }
 
-  static bool _isToday(String timeStr) => _parseTime(timeStr);
+  static bool _isTimeOnlyToday(String timeStr) {
+    if (timeStr.isEmpty) return false;
+    final trimmed = timeStr.trim();
+    if (trimmed.contains('/')) return false;
+    final parts = trimmed.split(':');
+    if (parts.length != 2) return false;
+    final now = DateTime.now();
+    final matchMinutes = int.tryParse(parts[0]) * 60 + int.tryParse(parts[1]);
+    if (matchMinutes == null) return false;
+    final startMinutes = 0;
+    final endMinutes = 24 * 60;
+    return matchMinutes >= startMinutes && matchMinutes <= endMinutes;
+  }
+
+  static bool _isToday(String timeStr) {
+    if (_parseTime(timeStr)) return true;
+    return _isTimeOnlyToday(timeStr);
+  }
 
   static bool _isTomorrow(String timeStr) {
     if (timeStr.isEmpty) return false;
