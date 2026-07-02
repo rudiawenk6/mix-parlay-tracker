@@ -27,7 +27,7 @@ class SettingsService {
   String bwbDomain = 'letsaiabt365.com';
   double bankroll = 7500000;
   String parlayStrategy = 'bwb365'; // bwb365, oddeven, conservative
-  String aiModel = 'openrouter/owl-alpha:free'; // default free model
+  String aiModel = 'meta-llama/llama-3.3-70b-instruct:free'; // default free model
 
   // Getters (never expose raw values in logs)
   String get openRouterKey => _openRouterKey;

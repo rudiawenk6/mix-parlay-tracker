@@ -15,7 +15,7 @@ class AiModels {
     {'id': 'nvidia/llama-3.1-nemotron-70b-instruct:free', 'name': 'Nemotron 70B', 'provider': 'NVIDIA', 'ctx': '128K'},
   ];
 
-  static String defaultModel = 'openrouter/owl-alpha:free';
+  static String defaultModel = 'meta-llama/llama-3.3-70b-instruct:free';
   
   static String getModelName(String id) {
     // Check custom models first
